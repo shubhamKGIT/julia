@@ -1438,15 +1438,15 @@ AbstractVecOrTuple{T} = Union{AbstractVector{<:T}, Tuple{Vararg{T}}}
 function _typed_vcat(::Type{T}, V::AbstractVecOrTuple{AbstractVector}) where T
     n = 0
     for Vk in V
-        n = (n + length(Vk)::Integer)::Integer
+        n = n + Int(length(Vk))::Int
     end
     a = similar(V[1], T, n)
     pos = 1
-    for k=1:length(V)
+    for k=1:Int(length(V))::Int
         Vk = V[k]
-        p1 = (pos+length(Vk)::Integer-1)::Integer
+        p1 = pos-1+Int(length(Vk))::Int
         a[pos:p1] = Vk
-        pos = (p1+1)::Integer
+        pos = 1+p1
     end
     a
 end
