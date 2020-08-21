@@ -22,7 +22,7 @@ const artifact_names = ("JuliaArtifacts.toml", "Artifacts.toml")
 
 const ARTIFACTS_DIR_OVERRIDE = Ref{Union{String,Nothing}}(nothing)
 """
-    with_artifacts_directory(f::Function, artifacts_dir::String)
+    with_artifacts_directory(f::Function, artifacts_dir::AbstractString)
 
 Helper function to allow temporarily changing the artifact installation and search
 directory.  When this is set, no other directory will be searched for artifacts, and new
@@ -30,7 +30,7 @@ artifacts will be installed within this directory.  Similarly, removing an artif
 only effect the given artifact directory.  To layer artifact installation locations, use
 the typical Julia depot path mechanism.
 """
-function with_artifacts_directory(f::Function, artifacts_dir::String)
+function with_artifacts_directory(f::Function, artifacts_dir::AbstractString)
     try
         ARTIFACTS_DIR_OVERRIDE[] = artifacts_dir
         f()
@@ -102,7 +102,7 @@ function load_overrides(;force::Bool = false)
         # Load the toml file
         depot_override_dict = parse_toml(override_file)
 
-        function parse_mapping(mapping::String, name::String)
+        function parse_mapping(mapping::AbstractString, name::AbstractString)
             if !isabspath(mapping) && !isempty(mapping)
                 try
                     mapping = Base.SHA1(mapping)
@@ -113,7 +113,7 @@ function load_overrides(;force::Bool = false)
             end
             return mapping
         end
-        function parse_mapping(mapping::Dict, name::String)
+        function parse_mapping(mapping::Dict, name::AbstractString)
             return Dict(k => parse_mapping(v, name) for (k, v) in mapping)
         end
 
@@ -174,7 +174,7 @@ function load_overrides(;force::Bool = false)
 end
 
 # Helpers to map an override to an actual path
-map_override_path(x::String) = x
+map_override_path(x::AbstractString) = x
 map_override_path(x::SHA1) = artifact_path(x)
 map_override_path(x::Nothing) = nothing
 
@@ -187,7 +187,7 @@ redirected to a particular path or another content-hash.
 function query_override(hash::SHA1; overrides::Dict = load_overrides())
     return map_override_path(get(overrides[:hash], hash, nothing))
 end
-function query_override(pkg::Base.UUID, artifact_name::String; overrides::Dict = load_overrides())
+function query_override(pkg::Base.UUID, artifact_name::AbstractString; overrides::Dict = load_overrides())
     if haskey(overrides[:UUID], pkg)
         return map_override_path(get(overrides[:UUID][pkg], artifact_name, nothing))
     end
@@ -251,12 +251,12 @@ function artifact_exists(hash::SHA1; honor_overrides::Bool=true)
 end
 
 """
-    unpack_platform(entry::Dict, name::String, artifacts_toml::String)
+    unpack_platform(entry::Dict, name::AbstractString, artifacts_toml::AbstractString)
 
 Given an `entry` for the artifact named `name`, located within the file `artifacts_toml`,
 returns the `Platform` object that this entry specifies.  Returns `nothing` on error.
 """
-function unpack_platform(entry::Dict, name::String, artifacts_toml::String)
+function unpack_platform(entry::Dict, name::AbstractString, artifacts_toml::AbstractString)
     if !haskey(entry, "os")
         @error("Invalid artifacts file at '$(artifacts_toml)': platform-specific artifact entry '$name' missing 'os' key")
         return nothing
@@ -286,13 +286,13 @@ function pack_platform!(meta::Dict, p::Platform)
 end
 
 """
-    load_artifacts_toml(artifacts_toml::String;
+    load_artifacts_toml(artifacts_toml::AbstractString;
                         pkg_uuid::Union{UUID,Nothing}=nothing)
 
 Loads an `(Julia)Artifacts.toml` file from disk.  If `pkg_uuid` is set to the `UUID` of the
 owning package, UUID/name overrides stored in a depot `Overrides.toml` will be resolved.
 """
-function load_artifacts_toml(artifacts_toml::String;
+function load_artifacts_toml(artifacts_toml::AbstractString;
                              pkg_uuid::Union{Base.UUID,Nothing} = nothing)
     artifact_dict = parse_toml(artifacts_toml)
 
@@ -343,7 +343,7 @@ end
 process_overrides(artifact_dict::Dict, pkg_uuid::Nothing) = nothing
 
 """
-    artifact_meta(name::String, artifacts_toml::String;
+    artifact_meta(name::AbstractString, artifacts_toml::AbstractString;
                   platform::Platform = Platform(),
                   pkg_uuid::Union{Base.UUID,Nothing}=nothing)
 
@@ -354,7 +354,7 @@ most appropriate mapping.  If none is found, return `nothing`.
 !!! compat "Julia 1.3"
     This function requires at least Julia 1.3.
 """
-function artifact_meta(name::String, artifacts_toml::String;
+function artifact_meta(name::AbstractString, artifacts_toml::AbstractString;
                        platform::Platform = Platform(),
                        pkg_uuid::Union{Base.UUID,Nothing}=nothing)
     if !isfile(artifacts_toml)
@@ -366,7 +366,7 @@ function artifact_meta(name::String, artifacts_toml::String;
     return artifact_meta(name, artifact_dict, artifacts_toml; platform=platform)
 end
 
-function artifact_meta(name::String, artifact_dict::Dict, artifacts_toml::String;
+function artifact_meta(name::AbstractString, artifact_dict::Dict, artifacts_toml::AbstractString;
                        platform::Platform = Platform())
     if !haskey(artifact_dict, name)
         return nothing
@@ -394,7 +394,8 @@ function artifact_meta(name::String, artifact_dict::Dict, artifacts_toml::String
 end
 
 """
-    artifact_hash(name::String, artifacts_toml::String; platform::Platform = platform_key_abi())
+    artifact_hash(name::AbstractString, artifacts_toml::AbstractString;
+                  platform::Platform = platform_key_abi())
 
 Thin wrapper around `artifact_meta()` to return the hash of the specified, platform-
 collapsed artifact.  Returns `nothing` if no mapping can be found.
@@ -402,7 +403,7 @@ collapsed artifact.  Returns `nothing` if no mapping can be found.
 !!! compat "Julia 1.3"
     This function requires at least Julia 1.3.
 """
-function artifact_hash(name::String, artifacts_toml::String;
+function artifact_hash(name::AbstractString, artifacts_toml::AbstractString;
                        platform::Platform = Platform(),
                        pkg_uuid::Union{Base.UUID,Nothing}=nothing)
     meta = artifact_meta(name, artifacts_toml; platform=platform)
@@ -414,7 +415,7 @@ function artifact_hash(name::String, artifacts_toml::String;
 end
 
 """
-    find_artifacts_toml(path::String)
+    find_artifacts_toml(path::AbstractString)
 
 Given the path to a `.jl` file, (such as the one returned by `__source__.file` in a macro
 context), find the `(Julia)Artifacts.toml` that is contained within the containing project (if it
@@ -423,7 +424,7 @@ exists), otherwise return `nothing`.
 !!! compat "Julia 1.3"
     This function requires at least Julia 1.3.
 """
-function find_artifacts_toml(path::String)
+function find_artifacts_toml(path::AbstractString)
     if !isdir(path)
         path = dirname(path)
     end
@@ -454,7 +455,18 @@ function find_artifacts_toml(path::String)
     return nothing
 end
 
-function _artifact_str(__module__, artifacts_toml, name, artifact_dict, hash)
+# We do this to avoid doing the `joinpath()` work if we don't have to, and also to
+# avoid a trailing slash due to `joinpath()`'s habit of including one when the last
+# argument is the empty string.
+function jointail(dir, tail)
+    if !isempty(tail)
+        return joinpath(dir, tail)
+    else
+        return dir
+    end
+end
+
+function _artifact_str(__module__, artifacts_toml, name, path_tail, artifact_dict, hash)
     if haskey(Base.module_keys, __module__)
         # Process overrides for this UUID, if we know what it is
         process_overrides(artifact_dict, Base.module_keys[__module__].uuid)
@@ -464,7 +476,7 @@ function _artifact_str(__module__, artifacts_toml, name, artifact_dict, hash)
     # return the path to the artifact:
     for dir in artifact_paths(hash; honor_overrides=true)
         if isdir(dir)
-            return dir
+            return jointail(dir, path_tail)
         end
     end
 
@@ -472,7 +484,65 @@ function _artifact_str(__module__, artifacts_toml, name, artifact_dict, hash)
     # Artifacts module so that we only have to do this work if we're sure we need
     # to download something.
     Core.eval(@__MODULE__, :(import Pkg))
-    return Pkg.Artifacts.ensure_artifact_installed(name, artifacts_toml)
+    return jointail(Pkg.Artifacts.ensure_artifact_installed(name, artifacts_toml), path_tail)
+end
+
+"""
+    split_artifact_slash(name::AbstractString)
+
+Splits an artifact indexing string by path deliminters, isolates the first path element,
+returning that and the `joinpath()` of the remaining arguments.  This normalizes all path
+separators to the native path separator for the current platform.  Examples:
+
+# Examples
+```jldoctest
+julia> split_artifact_slash("Foo")
+("Foo", "")
+
+julia> ret = split_artifact_slash("Foo/bar/baz.so");
+
+julia> if Sys.iswindows()
+            ret == ("Foo", "bar\\baz.so")
+       else
+            ret == ("Foo", "bar/baz.so")
+       end
+true
+
+julia> ret = split_artifact_slash("Foo\\bar\\baz.so");
+
+julia> if Sys.iswindows()
+            ret == ("Foo", "bar\\baz.so")
+       else
+            ret == ("Foo", "bar/baz.so")
+       end
+true
+```
+"""
+function split_artifact_slash(name::AbstractString)
+    split_name = split(name, r"(/|\\)")
+    if length(split_name) == 1
+        return (split_name[1], "")
+    else
+        return (split_name[1], joinpath(split_name[2:end]...))
+    end
+end
+
+"""
+    artifact_slash_lookup(name::AbstractString, artifacts_toml::AbstractString)
+
+Returns `artifact_name`, `artifact_path_tail`, and `hash` by looking the results up in
+the given `artifacts_toml`, first extracting the name and path tail from the given `name`
+to support slash-indexing within the given artifact.
+"""
+function artifact_slash_lookup(name::AbstractString, artifact_dict::Dict, artifacts_toml::AbstractString)
+    artifact_name, artifact_path_tail = split_artifact_slash(name)
+
+    meta = artifact_meta(artifact_name, artifact_dict, artifacts_toml)
+    if meta === nothing
+        error("Cannot locate artifact '$(name)' in '$(artifacts_toml)'")
+    end
+    hash = SHA1(meta["git-tree-sha1"])
+    return artifact_name, artifact_path_tail, hash
 end
 
 """
@@ -480,16 +550,24 @@ end
 
 Macro that is used to automatically ensure an artifact is installed, and return its
 location on-disk.  Automatically looks the artifact up by name in the project's
-`(Julia)Artifacts.toml` file.  Throws an error on inability to install the requested artifact.
-If run in the REPL, searches for the toml file starting in the current directory, see
-`find_artifacts_toml()` for more.
+`(Julia)Artifacts.toml` file.  Throws an error on inability to install the requested
+artifact.  If run in the REPL, searches for the toml file starting in the current
+directory, see `find_artifacts_toml()` for more.
+
+If `name` contains a forward or backward slash, all elements after the first slash will
+be taken to be path names indexing into the artifact, allowing for an easy one-liner to
+access a single file/directory within an artifact.  Example:
+
+    ffmpeg_path = @artifact"FFMPEG/bin/ffmpeg"
 
 !!! compat "Julia 1.3"
     This macro requires at least Julia 1.3.
+
+!!! compat "Julia 1.6"
+    Slash-indexing requires at least Julia 1.6.
 """
 macro artifact_str(name)
-    # Load Artifacts.toml at compile time, so that we don't have to use `__source__.file`
-    # at runtime, which gets stale if the `.ji` file is relocated.
+    # Find Artifacts.toml file we're going to load from
     srcfile = string(__source__.file)
     if ((isinteractive() && startswith(srcfile, "REPL[")) || (!isinteractive() && srcfile == "none")) && !isfile(srcfile)
         srcfile = pwd()
@@ -505,17 +583,26 @@ macro artifact_str(name)
         ))
     end
 
+    # Load Artifacts.toml at compile time, so that we don't have to use `__source__.file`
+    # at runtime, which gets stale if the `.ji` file is relocated.
+    local artifact_dict = load_artifacts_toml(artifacts_toml)
+
     # Invalidate calling .ji file if Artifacts.toml file changes
     Base.include_dependency(artifacts_toml)
 
-    local artifact_dict = load_artifacts_toml(artifacts_toml)
-    local meta = artifact_meta(name, artifact_dict, artifacts_toml)
-    if meta === nothing
-        error("Cannot locate artifact '$(name)' in '$(artifacts_toml)'")
-    end
-    local hash = SHA1(meta["git-tree-sha1"])
-    return quote
-        Base.invokelatest(_artifact_str, $(__module__), $(artifacts_toml), $(esc(name)), $(artifact_dict), $(hash))
+    # If `name` is a constant, we can actually load and parse the `Artifacts.toml` file now,
+    # saving the work from runtime.
+    if isa(name, AbstractString)
+        # To support slash-indexing, we need to split the artifact name from the path tail:
+        local artifact_name, artifact_path_tail, hash = artifact_slash_lookup(name, artifact_dict, artifacts_toml)
+        return quote
+            Base.invokelatest(_artifact_str, $(__module__), $(artifacts_toml), $(artifact_name), $(artifact_path_tail), $(artifact_dict), $(hash))
+        end
+    else
+        return quote
+            local artifact_name, artifact_path_tail, hash = artifact_slash_lookup($(esc(name)), $(artifact_dict), $(artifacts_toml))
+            Base.invokelatest(_artifact_str, $(__module__), $(artifacts_toml), artifact_name, artifact_path_tail, $(artifact_dict), hash)
+        end
     end
 end
 
