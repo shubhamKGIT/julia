@@ -42,7 +42,11 @@ int main(int argc, char * argv[])
 #endif
 
     // Call load_repl with our initialization arguments:
-    return load_repl(exe_dir, argc, (char **)argv);
+    int ret = load_repl(exe_dir, argc, (char **)argv);
+
+    // On Windows we're running without the CRT that would do this for us
+    exit(ret);
+    return ret;
 }
 
 #ifdef __cplusplus
