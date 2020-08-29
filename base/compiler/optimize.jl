@@ -386,6 +386,31 @@ function inline_worthy(body::Array{Any,1}, src::CodeInfo, sptypes::Vector{Any}, 
     return true
 end
 
+# Analyzing costs (keep in sync with the above)
+function statement_costs!(cost::Vector{Int}, body::Vector{Any}, src::CodeInfo, sptypes::Vector{Any}, params::OptimizationParams)
+    throw_blocks = find_throw_blocks(body)
+    maxcost = 0
+    for line = 1:length(body)
+        stmt = body[line]
+        thiscost = 0
+        if stmt isa Expr
+            thiscost = statement_cost(stmt, line, src, sptypes, src.slottypes, params, line in throw_blocks)::Int
+        elseif stmt isa GotoNode
+            # loops are generally always expensive
+            # but assume that forward jumps are already counted for from
+            # summing the cost of the not-taken branch
+            thiscost = stmt.label < line ? 40 : 0
+        elseif stmt isa GotoIfNot
+            thiscost = stmt.dest < line ? 40 : 0
+        end
+        cost[line] = thiscost
+        if thiscost > maxcost
+            maxcost = thiscost
+        end
+    end
+    return maxcost
+end
+
 function is_known_call(e::Expr, @nospecialize(func), src, sptypes::Vector{Any}, slottypes::Vector{Any} = empty_slottypes)
     if e.head !== :call
         return false
