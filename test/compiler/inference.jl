@@ -2743,3 +2743,7 @@ f_generator_splat(t::Tuple) = tuple((identity(l) for l in t)...)
 @test !Core.Compiler.sizeof_nothrow(UnionAll)
 
 @test Base.return_types(Expr) == Any[Expr]
+
+# getfield on DataType should const propagate
+f37293() = Number.abstract ? true : "no"
+@test @inferred f37293()
